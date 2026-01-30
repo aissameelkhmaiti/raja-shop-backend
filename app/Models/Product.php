@@ -25,4 +25,11 @@ class Product extends Model
     {
         return $this->belongsTo(Categorie::class);
     }
+
+    public function sizes()
+{
+    return $this->belongsToMany(Size::class)
+        ->withPivot('stock', 'price')
+        ->withTimestamps();
+}
 }

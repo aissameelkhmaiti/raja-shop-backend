@@ -29,6 +29,7 @@ class OrderController extends Controller
         'items' => 'required|array',
         'items.*.product_id' => 'required|exists:products,id',
         'items.*.quantity' => 'required|integer|min:1',
+        'items.*.size_id' => 'nullable|exists:sizes,id',
     ]);
 
     // Récupérer l'utilisateur connecté

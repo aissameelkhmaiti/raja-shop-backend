@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 
 class VisitController extends Controller
 {
@@ -31,20 +33,49 @@ class VisitController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-      public function stats(Request $request)
+    public function stats(Request $request)
     {
         $days = $request->get('days', 30);
+        $endDate = Carbon::now();
+        $startDate = Carbon::now()->subDays($days);
 
-        $data = Visit::selectRaw('DATE(created_at) as date')
+        // Récupérer les données existantes
+        $visits = Visit::selectRaw('DATE(created_at) as date')
             ->selectRaw('COUNT(DISTINCT visitor_id) as total')
-            ->selectRaw("SUM(device = 'desktop') as desktop")
-            ->selectRaw("SUM(device = 'mobile') as mobile")
-            ->where('created_at', '>=', now()->subDays($days))
+            ->selectRaw("SUM(CASE WHEN device = 'desktop' THEN 1 ELSE 0 END) as desktop")
+            ->selectRaw("SUM(CASE WHEN device = 'mobile' THEN 1 ELSE 0 END) as mobile")
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('date')
             ->orderBy('date')
-            ->get();
+            ->get()
+            ->keyBy('date');
 
-        return response()->json($data);
+        // Créer un tableau avec tous les jours (même ceux sans données)
+        $period = CarbonPeriod::create($startDate->format('Y-m-d'), $endDate->format('Y-m-d'));
+        $result = [];
+
+        foreach ($period as $date) {
+            $dateString = $date->format('Y-m-d');
+            
+            if (isset($visits[$dateString])) {
+                // Utiliser les vraies données
+                $result[] = [
+                    'date' => $dateString,
+                    'total' => (int) $visits[$dateString]->total,
+                    'desktop' => (string) $visits[$dateString]->desktop,
+                    'mobile' => (string) $visits[$dateString]->mobile,
+                ];
+            } else {
+                // Remplir avec des zéros pour les jours sans données
+                $result[] = [
+                    'date' => $dateString,
+                    'total' => 0,
+                    'desktop' => "0",
+                    'mobile' => "0",
+                ];
+            }
+        }
+
+        return response()->json($result);
     }
 }
-

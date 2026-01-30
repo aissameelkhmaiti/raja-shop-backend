@@ -8,6 +8,7 @@ use App\Services\Interfaces\UserServiceInterface;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Events\AppNotificationEvent;
+use App\Events\UserLoggedIn;
 use App\Enums\NotificationType;
 use App\Services\CloudinaryService;
 use Illuminate\Support\Facades\Storage;
@@ -82,6 +83,8 @@ class AuthController extends Controller
 
         $user->update(['otp_code' => null, 'otp_expires_at' => null]);
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        event(new UserLoggedIn($user));
 
         event(new AppNotificationEvent([
             'user_id' => $user->id,
